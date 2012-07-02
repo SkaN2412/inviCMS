@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<database type="class">
+    <server type="entry">localhost</server>
+    <login type="entry">root</login>
+    <password type="entry">q24u12e19rt94i</password>
+    <db type="entry">invicms</db>
+</database>
+<site_data type="class">
+    <name type="entry">inviCMS</name>
+    <description type="entry">Light CMS with strong functional</description>
+</site_data>
+<plugins type="class">
+    <inviBlog type="class">
+        <database type="class">
+            <table_prefix type="entry">blog_</table_prefix>
+        </database>
+    </inviBlog>
+</plugins>
