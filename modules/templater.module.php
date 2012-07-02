@@ -2,7 +2,7 @@
 /*
  * inviTemplater 3.4beta
  * Dependencies: inviExceptions
- * Documentation can be found in 
+ * Documentation can be found in https://github.com/SkaN2412/inviCMS/wiki/%D0%A0%D0%B0%D0%B1%D0%BE%D1%82%D0%B0-%D1%81-inviTemplater
  */
 class Stemplater {
 	//Metadata
@@ -40,12 +40,12 @@ class Stemplater {
 		} elseif (file_exists($this->dir.$page.".html")) {
 			$file = $this->dir.$page.".html";
 		} else {
-			throw new inviException(10002, "File ".$this->dir.$page.".htm(l) does not exist");
+			throw new inviException(10001, "File ".$this->dir.$page.".htm(l) does not exist");
 		}
 		//Check emptyness of file
 		if (!filesize($file))
 		{
-			throw new inviException(10003, "File ".$file." is empty");
+			throw new inviException(10002, "File ".$file." is empty");
 		}
 		//Fill $this->content with file contents
 		$this->content = file_get_contents($file);
@@ -56,7 +56,7 @@ class Stemplater {
 		//Vars must be an array!
 		if (!is_array($vars))
 		{
-			throw new inviException(10004, "\$vars is not array");
+			throw new inviException(10003, "\$vars is not array");
 		}
 		$this->vars = $vars;
 		unset($vars);
@@ -67,7 +67,7 @@ class Stemplater {
 	//Main function that parses all the content
 	private function parseCode($code) {
 		//I don't know, how is working this template, but it works.
-		preg_match_all('/\{(case|array|var|include)=`(.*?)`\}(((?:(?!\{\/?\1=`\2`).)*)\{\/\1=`\2`\})?/s', $code, $matches);
+		preg_match_all('/\{(case|array|var|include)=\'(.*?)\'\}(((?:(?!\{\/?\1=\'\2\').)*)\{\/\1=\'\2\'\})?/s', $code, $matches);
 		for ($i=0; $i<count($matches[0]); $i++) { //Parsing all the conditions with their methods
 			switch ($matches[1][$i]) {
 				case "case":
@@ -89,10 +89,10 @@ class Stemplater {
 
 	//Insert variable. It's simple, I don't want to comment it...
 	private function parseVar($match, $code) {
-		preg_match('/\{var=`(.*?)`\}/', $match, $var);
+		preg_match('/\{var=\'(.*?)\'\}/', $match, $var);
 		if (!isset($this->vars[$var[1]]))
 		{
-			throw new inviException(10006, "Variable $".$var[1]." does not exist");
+			throw new inviException(10004, "Variable $".$var[1]." does not exist");
 		}
 		$code = str_replace($match, $this->vars[$var[1]], $code);
 		return $code;
@@ -100,14 +100,14 @@ class Stemplater {
 
 	//It loads given template and parse it with variables from $this->vars. Method is similar with method "load"
 	private function parseInclude($match, $code) {
-		preg_match('/\{include=`(.*?)`\}/', $match, $matches);
+		preg_match('/\{include=\'(.*?)\'\}/', $match, $matches);
 		if (file_exists($this->dir.$matches[1].".htm"))
 		{
 			$file = $this->dir.$matches[1].".htm";
         	} elseif (file_exists($this->dir.$matches[1].".html")) {
 			$file = $this->dir.$matches[1].".html";
         	} else {
-			throw new inviException(10005, "File ".$this->dir.$matches[1].".htm(l) does not exist");
+			throw new inviException(10001, "File ".$this->dir.$matches[1].".htm(l) does not exist");
 		}
 		$content = file_get_contents($file);
 		//Recursive parsing of code
@@ -118,18 +118,18 @@ class Stemplater {
 
 	//This method parses cycles with multi-dimensional arrays
 	private function parseCycle($match, $code) {
-		preg_match('|\{array=`(\w+)`\}((?:(?!\{/?array).)*){/array=`\1`}|s', $match, $matches);
+		preg_match('|\{array=\'(\w+)\'\}((?:(?!\{/?array).)*){/array=\'\1\'}|s', $match, $matches);
 		if (!isset($this->vars[$matches[1]]))
 		{
-			throw new inviException(10006, "Array $".$matches[1]." does not exist");
+			throw new inviException(10004, "Array $".$matches[1]." does not exist");
 		}
 		if (!is_array($this->vars[$matches[1]]))
 		{
-			throw new inviException(10007, "Variable $".$matches[1]." is not array");
+			throw new inviException(10005, "Variable $".$matches[1]." is not array");
 		}
 		if (!isset($this->vars[$matches[1]][0]) || !is_array($this->vars[$matches[1]][0]))
 		{
-			throw new inviException(10008, "Array $".$matches[1]." is not multi-dimensional");
+			throw new inviException(10006, "Array $".$matches[1]." is not multi-dimensional");
 		}
 		$coden = "";
 		//$coden (code new) is temp varible, which will have final content for replacing in $code. $temp is one-cycle variable, which will have only one entry and add it to $coden.
@@ -149,12 +149,12 @@ class Stemplater {
 
 	//Parsing all the cases. VERY big method, will be shorted in time...
 	private function parseCase($match, $code) {
-		preg_match('/\{case=`([0-9A-Za-z_]+)(==|!=|<=|>=|<|>|\|isset\|)([0-9A-Za-z_]+)`\}((?:(?!\{\/?case=`\1\2\3`).)*)\{\/case=`\1\2\3`\}/s', $match, $matches);
+		preg_match('/\{case=\'([0-9A-Za-z_]+)(==|!=|<=|>=|<|>|\|isset\|)([0-9A-Za-z_]+)\'\}((?:(?!\{\/?case=\'\1\2\3\').)*)\{\/case=\'\1\2\3\'\}/s', $match, $matches);
 		switch ($matches[2]) {
 			case "==":
 				if (!isset($this->vars[$matches[1]]))
 				{
-					throw new inviException(10006, "Variable $".$matches[1]." does not exist");
+					throw new inviException(10004, "Variable $".$matches[1]." does not exist");
 				}
 				if (isset($this->vars[$matches[3]])) {
 					if ($this->vars[$matches[1]] == $this->vars[$matches[3]]) {
@@ -178,7 +178,7 @@ class Stemplater {
 			case "!=":
 				if (!isset($this->vars[$matches[1]]))
 				{
-					throw new inviException(10006, "Variable $".$matches[1]." does not exist");
+					throw new inviException(10004, "Variable $".$matches[1]." does not exist");
 				}
 				if (isset($this->vars[$matches[3]])) {
 					if ($this->vars[$matches[1]] != $this->vars[$matches[3]]) {
@@ -202,7 +202,7 @@ class Stemplater {
 			case "<=":
 				if (!isset($this->vars[$matches[1]]))
 				{
-					throw new inviException(10006, "Variable $".$matches[1]." does not exist");
+					throw new inviException(10004, "Variable $".$matches[1]." does not exist");
 				}
 				if (isset($this->vars[$matches[3]])) {
 					if ($this->vars[$matches[1]] <= $this->vars[$matches[3]]) {
@@ -226,7 +226,7 @@ class Stemplater {
 			case ">=":
 				if (!isset($this->vars[$matches[1]]))
 				{
-					throw new inviException(10006, "Variable $".$matches[1]." does not exist");
+					throw new inviException(10004, "Variable $".$matches[1]." does not exist");
 				}
 				if (isset($this->vars[$matches[3]])) {
 					if ($this->vars[$matches[1]] >= $this->vars[$matches[3]]) {
@@ -250,7 +250,7 @@ class Stemplater {
 			case "<":
 				if (!isset($this->vars[$matches[1]]))
 				{
-					throw new inviException(10006, "Variable $".$matches[1]." does not exist");
+					throw new inviException(10004, "Variable $".$matches[1]." does not exist");
 				}
 				if (isset($this->vars[$matches[3]])) {
 					if ($this->vars[$matches[1]] < $this->vars[$matches[3]]) {
@@ -274,7 +274,7 @@ class Stemplater {
 			case ">":
 				if (!isset($this->vars[$matches[1]]))
 				{
-					throw new inviException(10006, "Variable $".$matches[1]." does not exist");
+					throw new inviException(10004, "Variable $".$matches[1]." does not exist");
 				}
 				if (isset($this->vars[$matches[3]])) {
 					if ($this->vars[$matches[1]] > $this->vars[$matches[3]]) {
@@ -316,7 +316,7 @@ class Stemplater {
 				}
 				break;
 			default:
-				throw new inviException(10009, $matches[2]." is not a valid case");
+				throw new inviException(10007, $matches[2]." is not a valid case");
 		}
 		return $code;
 	}
