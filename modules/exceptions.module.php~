@@ -28,18 +28,14 @@ final class inviException extends Exception {
         switch ($mode)
         {
             case 0:
-                self::$printing = false;
-                self::$logging = false;
-                break;
-            case 1:
                 self::$printing = true;
                 self::$logging = false;
                 break;
-            case 2:
+            case 1:
                 self::$printing = false;
                 self::$logging = true;
                 break;
-            case 3:
+            case 2:
                 self::$printing = true;
                 self::$logging = true;
                 break;
