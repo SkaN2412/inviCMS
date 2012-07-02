@@ -17,6 +17,10 @@ class Stemplater {
 
 	//Set templater dir
 	public function __construct($dir) {
+		if ($dir[strlen($dir)-1] != DS)
+		{
+			$dir .= DS;
+		}
 		//If directory doesn't exist, throw exception
 		if (!is_dir($dir))
 		{

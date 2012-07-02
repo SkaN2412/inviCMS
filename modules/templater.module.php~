@@ -83,32 +83,55 @@ class Stemplater {
 		return $code;
 	}
 
+	//Insert variable. It's simple, I don't want to comment it...
 	private function parseVar($match, $code) {
 		preg_match('/\{var=`(.*?)`\}/', $match, $var);
-		if (!isset($this->vars[$var[1]])) die("Variable $".$var[1]." does not exist");
+		if (!isset($this->vars[$var[1]]))
+		{
+			throw new inviException(10006, "Variable $".$var[1]." does not exist");
+		}
 		$code = str_replace($match, $this->vars[$var[1]], $code);
 		return $code;
 	}
 
+	//It loads given template and parse it with variables from $this->vars. Method is similar with method "load"
 	private function parseInclude($match, $code) {
 		preg_match('/\{include=`(.*?)`\}/', $match, $matches);
-		if (file_exists($this->dir.$matches[1].".htm")) $file = $this->dir.$matches[1].".htm";
-        elseif (file_exists($this->dir.$matches[1].".html")) $file = $this->dir.$matches[1].".html";
-        else die("File ".$this->dir.$matches[1].".htm(l) does not exist");
+		if (file_exists($this->dir.$matches[1].".htm"))
+		{
+			$file = $this->dir.$matches[1].".htm";
+        	} elseif (file_exists($this->dir.$matches[1].".html")) {
+			$file = $this->dir.$matches[1].".html";
+        	} else {
+			throw new inviException(10005, "File ".$this->dir.$matches[1].".htm(l) does not exist");
+		}
 		$content = file_get_contents($file);
+		//Recursive parsing of code
 		$content = $this->parseCode($content);
 		$code = str_replace($matches[0], $content, $code);
 		return $code;
 	}
 
+	//This method parses cycles with multi-dimensional arrays
 	private function parseCycle($match, $code) {
 		preg_match('|\{array=`(\w+)`\}((?:(?!\{/?array).)*){/array=`\1`}|s', $match, $matches);
-		if (!isset($this->vars[$matches[1]])) die("Array $".$matches[1]." does not exist");
-		if (!is_array($this->vars[$matches[1]])) die("Variable $".$matches[1]." is not array");
-		if (!isset($this->vars[$matches[1]][0]) || !is_array($this->vars[$matches[1]][0])) die("Array $".$matches[1]." is not multi-dimensional");
+		if (!isset($this->vars[$matches[1]]))
+		{
+			throw new inviException(10006, "Array $".$matches[1]." does not exist");
+		}
+		if (!is_array($this->vars[$matches[1]]))
+		{
+			throw new inviException(10007, "Variable $".$matches[1]." is not array");
+		}
+		if (!isset($this->vars[$matches[1]][0]) || !is_array($this->vars[$matches[1]][0]))
+		{
+			throw new inviException(10008, "Array $".$matches[1]." is not multi-dimensional");
+		}
 		$coden = "";
+		//$coden (code new) is temp varible, which will have final content for replacing in $code. $temp is one-cycle variable, which will have only one entry and add it to $coden.
 		for ($c=0; $c<count($this->vars[$matches[1]]); $c++) {
 			$temp = $matches[2];
+			//Replace all the entries with array
 			foreach ($this->vars[$matches[1]][$c] as $key=>$value) {
 				$temp = str_replace("{".$key."}", $value, $temp);
 			}
@@ -120,11 +143,15 @@ class Stemplater {
 		return $code;
 	}
 
+	//Parsing all the cases. VERY big method, will be shorted in time...
 	private function parseCase($match, $code) {
 		preg_match('/\{case=`([0-9A-Za-z_]+)(==|!=|<=|>=|<|>|\|isset\|)([0-9A-Za-z_]+)`\}((?:(?!\{\/?case=`\1\2\3`).)*)\{\/case=`\1\2\3`\}/s', $match, $matches);
 		switch ($matches[2]) {
 			case "==":
-				if (!isset($this->vars[$matches[1]])) die("Variable $".$matches[1]." does not exist");
+				if (!isset($this->vars[$matches[1]]))
+				{
+					throw new inviException(10006, "Variable $".$matches[1]." does not exist");
+				}
 				if (isset($this->vars[$matches[3]])) {
 					if ($this->vars[$matches[1]] == $this->vars[$matches[3]]) {
 						$matches[4] = parseCode($matches[4]);
@@ -145,7 +172,10 @@ class Stemplater {
 				}
 				break;
 			case "!=":
-				if (!isset($this->vars[$matches[1]])) die("Variable $".$matches[1]." does not exist");
+				if (!isset($this->vars[$matches[1]]))
+				{
+					throw new inviException(10006, "Variable $".$matches[1]." does not exist");
+				}
 				if (isset($this->vars[$matches[3]])) {
 					if ($this->vars[$matches[1]] != $this->vars[$matches[3]]) {
 						$matches[4] = $this->parseCode($matches[4]);
@@ -166,7 +196,10 @@ class Stemplater {
 				}
 				break;
 			case "<=":
-				if (!isset($this->vars[$matches[1]])) die("Variable $".$matches[1]." does not exist");
+				if (!isset($this->vars[$matches[1]]))
+				{
+					throw new inviException(10006, "Variable $".$matches[1]." does not exist");
+				}
 				if (isset($this->vars[$matches[3]])) {
 					if ($this->vars[$matches[1]] <= $this->vars[$matches[3]]) {
 						$matches[4] = $this->parseCode($matches[4]);
@@ -187,7 +220,10 @@ class Stemplater {
 				}
 				break;
 			case ">=":
-				if (!isset($this->vars[$matches[1]])) die("Variable $".$matches[1]." does not exist");
+				if (!isset($this->vars[$matches[1]]))
+				{
+					throw new inviException(10006, "Variable $".$matches[1]." does not exist");
+				}
 				if (isset($this->vars[$matches[3]])) {
 					if ($this->vars[$matches[1]] >= $this->vars[$matches[3]]) {
 						$matches[4] = $this->parseCode($matches[4]);
@@ -208,7 +244,10 @@ class Stemplater {
 				}
 				break;
 			case "<":
-				if (!isset($this->vars[$matches[1]])) die("Variable $".$matches[1]." does not exist");
+				if (!isset($this->vars[$matches[1]]))
+				{
+					throw new inviException(10006, "Variable $".$matches[1]." does not exist");
+				}
 				if (isset($this->vars[$matches[3]])) {
 					if ($this->vars[$matches[1]] < $this->vars[$matches[3]]) {
 						$matches[4] = $this->parseCode($matches[4]);
@@ -229,7 +268,10 @@ class Stemplater {
 				}
 				break;
 			case ">":
-				if (!isset($this->vars[$matches[1]])) die("Variable $".$matches[1]." does not exist");
+				if (!isset($this->vars[$matches[1]]))
+				{
+					throw new inviException(10006, "Variable $".$matches[1]." does not exist");
+				}
 				if (isset($this->vars[$matches[3]])) {
 					if ($this->vars[$matches[1]] > $this->vars[$matches[3]]) {
 						$matches[4] = $this->parseCode($matches[4]);
@@ -270,7 +312,7 @@ class Stemplater {
 				}
 				break;
 			default:
-				die($matches[2]." is not a valid case");
+				throw new inviException(10009, $matches[2]." is not a valid case");
 		}
 		return $code;
 	}
