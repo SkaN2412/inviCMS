@@ -2,9 +2,8 @@
 define("DS", DIRECTORY_SEPARATOR);
 include_once("./exceptions.module.php");
 /*
- * inviConfig 1.0dev
+ * inviConfig 1.0alpha
  * Config tool for inviCMS
- * This module is in development now, please, don't use it.
  */
 include_once("..".DS."system".DS."config.php");
 

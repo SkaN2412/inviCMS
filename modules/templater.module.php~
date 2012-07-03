@@ -2,9 +2,9 @@
 /*
  * inviTemplater 3.4beta
  * Dependencies: inviExceptions
- * Documentation can be found in 
+ * Documentation can be found in https://github.com/SkaN2412/inviCMS/wiki/%D0%A0%D0%B0%D0%B1%D0%BE%D1%82%D0%B0-%D1%81-inviTemplater
  */
-class Stemplater {
+class inviTemplater {
 	//Metadata
 	public $name = "inviTemplater";
 	public $version = "3.4beta";
@@ -24,11 +24,10 @@ class Stemplater {
 		//If directory doesn't exist, throw exception
 		if (!is_dir($dir))
 		{
-			throw new inviException(10001, "Directory ".$dir." does not exist");
+			throw new inviException(10001, "Directory {$dir} does not exist.");
 		}
 		//Set $this->dir
 		$this->dir = $dir.DS;
-		
 	}
 
 	//Load template for parsing
@@ -40,7 +39,7 @@ class Stemplater {
 		} elseif (file_exists($this->dir.$page.".html")) {
 			$file = $this->dir.$page.".html";
 		} else {
-			throw new inviException(10001, "File ".$this->dir.$page.".htm(l) does not exist");
+			throw new inviException(10001, "File {$this->dir.$page}.htm(l) does not exist.");
 		}
 		//Check emptyness of file
 		if (!filesize($file))
@@ -121,7 +120,7 @@ class Stemplater {
 		preg_match('|\{array=\'(\w+)\'\}((?:(?!\{/?array).)*){/array=\'\1\'}|s', $match, $matches);
 		if (!isset($this->vars[$matches[1]]))
 		{
-			throw new inviException(10004, "Array $".$matches[1]." does not exist");
+			throw new inviException(10004, "Variable $".$matches[1]." does not exist");
 		}
 		if (!is_array($this->vars[$matches[1]]))
 		{
