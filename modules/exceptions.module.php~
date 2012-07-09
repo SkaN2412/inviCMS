@@ -8,7 +8,7 @@
 final class inviException extends Exception {
     //Metadata
     const NAME = "inviException";
-    const VER = "0.1beta";
+    const VER = "0.2beta";
     
     private static $logging = true;
     private static $printing = true;
@@ -23,30 +23,37 @@ final class inviException extends Exception {
     protected $file;
     protected $trace;
     
-    public static function __init($mode, $logfile, $lf = "html", $pf = "html")
+    public static function __init($mode, $logfile = false, $lf = "html", $pf = "html")
     {
         switch ($mode)
         {
             case 0:
-                self::$printing = true;
+                self::$printing = false;
                 self::$logging = false;
                 break;
             case 1:
+                self::$printing = true;
+                self::$logging = false;
+                break;
+            case 2:
                 self::$printing = false;
                 self::$logging = true;
                 break;
-            case 2:
+            case 3:
                 self::$printing = true;
                 self::$logging = true;
                 break;
             default:
                 return "Invalid mode argument.";
         }
-        if (!file_exists($logfile))
-        {
-            touch($logfile);
-        }
-	self::$logfile = $logfile;
+	if ($logfile != false)
+	{
+        	if (!file_exists($logfile))
+        	{
+        	    touch($logfile);
+        	}
+		self::$logfile = $logfile;
+	}
         if ($pf == "plain" || $pf == "html")
         {
             self::$pf = $pf;
