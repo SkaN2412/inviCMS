@@ -39,7 +39,7 @@ class inviTemplater {
 		} elseif (file_exists($this->dir.$page.".html")) {
 			$file = $this->dir.$page.".html";
 		} else {
-			throw new inviException(10001, "File {$this->dir}{$page}.htm(l) does not exist.");
+			throw new inviException(10001, "File {$this->dir.$page}.htm(l) does not exist.");
 		}
 		//Check emptyness of file
 		if (!filesize($file))
