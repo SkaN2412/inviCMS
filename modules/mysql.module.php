@@ -1,386 +1,318 @@
 <?php
-class inviMysql {
+class inviDB {
 	//Metadata
-	public $name = "inviMysql";
-	public $version = "3.0";
+	public $name = "inviDB";
+	public $version = "4.1alpha";
 	
-	private $mysqli;
+    // Variable for connection
+	private $conn;
+    // Statement variable
+    private $stat;
 	
-	function __construct($server = "", $login = "", $password = "", $database = "")
+	function __construct($server = "", $login = "", $password = "", $db = "")
 	{
-		if ($server == "" && $login == "" && $password == "" && $database == "")
+        // If no parameters given, watch connection data from config
+		if ($server == "" || $login == "" || $password == "" || $db == "")
 		{
-			$_config = new SconfigQueries();
-			$server = $_config->get("db_server");
-			$login = $_config->get("db_login");
-			$password = $_config->get("db_password");
-			$database = $_config->get("db");
-		}
-		$this->mysqli = new mysqli($server, $login, $password, $database);
-		return true;
+			$conn_data = inviConfig::get("database");
+		} else {
+            $conn_data = array(
+                'server' => $server,
+                'login' => $login,
+                'password' => $password,
+                'db' => $db
+            );
+        }
+        try { // Try to connect
+            $this->conn = new PDO("mysql:host={$conn_data['server']};dbname={$conn_data['db']}", $conn_data['login'], $conn_data['password']);
+        } catch (PDOException $e) {
+            throw new inviException($e->getCode(), $e->getMessage());
+        } // Errors will throw exceptions
+        $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	}
-
-	public function selectEntries($table, $optionals = null)
+    // <ethod for getting entries from database
+	public function selectEntries($table, $optionals = NULL)
 	{
 		$query = "SELECT ";
-		if (isset($optionals))
+        // If there's optional parameters given
+		if ($optionals != NULL)
 		{
 			if (isset($optionals['distinct']))
 			{
 				$query .= "DISTINCT ";
+                unset($optionals['distinct']);
+			}
+			if (isset($optionals['rows']))
+			{ // Rows to return
+				$rows = explode(", ", $optionals['rows']);
+				foreach ($rows as $row)
+				{
+                    $query .= "`{$row}`";
+					if (end($rows) != $row)
+                    {
+                        $query .= ", ";
+                    }
+				}
+                unset($rows, $row, $optionals['rows']);
+			} else {
+				$query .= "* ";
+			}
+			$query .= " FROM `".$table."`";
+			if (isset($optionals['cases']))
+			{ // Cases
+				$query .= " WHERE ";
+				foreach ($optionals['cases'] as $row => $v)
+                {
+                    $query .= "`{$row}` = :{$row}";
+                    end($optionals['cases']);
+                    if ($row != key($optionals['cases']))
+                    {
+                        $query .= " AND ";
+                    }
+                }
+                unset($v, $row);
+            }
+			if (isset($optionals['order']))
+			{
+				$optionals['order'] = explode(" ", $optionals['order']);
+				$query .= " ORDER BY `{$optionals['order']}`";
+				switch ($optionals['order'][1])
+                {
+                    case 'desc':
+                        $query .= " DESC";
+                        break;
+                    case 'asc':
+                    default:
+                        $query .= " ASC";
+                }
+                unset($optionals['order']);
+			}
+			if (isset($optionals['limit']))
+            {
+                $query .= " LIMIT ".$optionals['limit'];
+                unset($optionals['limit']);
+            }
+		} else {
+			$query .= "* FROM `$table`";
+            $optionals['cases'] = array();
+            unset($table);
+		}
+		$this->query($query, $optionals['cases']);
+        return $this->getReturnedData();
+	}
+
+	public function countEntries($table, $optionals = null)
+	{
+		$query = "SELECT ";
+		if ($optionals != NULL)
+		{
+			if (isset($optionals['distinct']))
+			{
+				$query .= "DISTINCT ";
+                unset($optionals['distinct']);
 			}
 			if (isset($optionals['rows']))
 			{
 				$rows = explode(", ", $optionals['rows']);
-				foreach ($rows as $value)
+                $query .= "COUNT(";
+				foreach ($rows as $row)
 				{
-					if (end($rows) != $value) $query .= "`".$value."`, ";
-					if (end($rows) == $value) $query .= "`".$value."` ";
+                    $query .= "`{$row}`";
+					if (end($rows) != $row)
+                    {
+                        $query .= ", ";
+                    } else {
+                        $query .= ") ";
+                    }
 				}
+                unset($rows, $row, $optionals['rows']);
 			} else {
 				$query .= "* ";
 			}
 			$query .= "FROM `".$table."`";
 			if (isset($optionals['cases']))
 			{
-				preg_match_all("/`([A-z0-9_-]*)`(==|%=)<([^>]+)>(, )?/s", $optionals['cases'], $matches);
 				$query .= " WHERE ";
-				for ($i=0; $i<count($matches[0]); $i++)
-				{
-					switch ($matches[2][$i])
-					{
-						case "==":
-							$query .= "`".$matches[1][$i]."` = ?";
-							break;
-						case "%=":
-							$query .= "`".$matches[1][$i]."` LIKE ?";
-							$matches[3][$i] = "%".$matches[3][$i]."%";
-							break;
-					}
-					if ($matches[4][$i] == ", ")
-					{
-						$query .= " AND ";
-					}
-				}
-			}
+				foreach ($optionals['cases'] as $row => $v)
+                {
+                    $query .= "`{$row}` = :{$row}";
+                    end($optionals['cases']);
+                    if ($row != key($optionals['cases']))
+                    {
+                        $query .= " AND ";
+                    }
+                }
+                unset($v, $row);
+            }
 			if (isset($optionals['order']))
 			{
-				$order = explode(" ", $optionals['order']);
-				$query .= " ORDER BY `$order[0]`";
-				if ($order[1] == "asc") $query .= " ASC";
-				if ($order[1] == "desc") $query .= " DESC";
+				$optionals['order'] = explode(" ", $optionals['order']);
+				$query .= " ORDER BY `{$optionals['order']}`";
+				switch ($optionals['order'][1])
+                {
+                    case 'desc':
+                        $query .= " DESC";
+                        break;
+                    case 'asc':
+                    default:
+                        $query .= " ASC";
+                }
+                unset($optionals['order']);
 			}
-			if (isset($optionals['limit'])) $query .= " LIMIT ".$optionals['limit'];
-		} else {
-			$query .= "* FROM `$table`";
-		}
-		$stmt = $this->mysqli->prepare($query);
-		$params = array();
-		$types = "";
-		if (isset($matches))
-		{
-			foreach ($matches[3] as $key=>$value)
-			{
-				if (is_int($value) == TRUE) $types .= "i";
-				elseif(is_float($value) == TRUE) $types .= "d";
-				else $types .= "s";
-				$params[$key] = &$matches[3][$key];
-			}
-			array_unshift($params, $types);
-			call_user_func_array(array($stmt, "bind_param"), $params);
-		}
-		$stmt->execute();
-		$results = array();
-		$meta = $stmt->result_metadata();
-		$data = array();
-		while ($field = $meta->fetch_field())
-		{
-			$data[$field->name] = "";
-			$results[] = &$data[$field->name];
-		}
-		$stmt->store_result();
-		call_user_func_array(array($stmt, "bind_result"), $results);
-		$results = array();
-		$i=0;
-		while ($stmt->fetch())
-		{
-			$results[$i] = array();
-			foreach ($data as $key=>$value)
-			{
-				$results[$i][$key] = $value;
-			}
-			$i++;
-		}
-		$stmt->close();
-		return $results;
-	}
-
-	public function countEntries($table, $optionals = null)
-	{
-		$query = "SELECT ";
-		if (isset($optionals))
-		{
-			if (isset($optionals['distinct']))
-			{
-				$query .= "DISTINCT ";
-			}
-			if (isset($optionals['rows']))
-			{
-				$rows = explode(", ", $optionals['rows']);
-				$query .= "COUNT(";
-				foreach ($rows as $value)
-				{
-					if (end($rows) != $value) $query .= "`".$value."`, ";
-					if (end($rows) == $value) $query .= "`".$value."`) ";
-				}
-			} else {
-				$query .= "COUNT(*) ";
-			}
-			$query .= "FROM `".$table."`";
-			if (isset($optionals['cases']))
-			{
-				preg_match_all("/`([A-z0-9_-]*)`(==|%=)<([^>]+)>(, )?/s", $optionals['cases'], $matches);
-				$query .= " WHERE ";
-				for ($i=0; $i<count($matches[0]); $i++)
-				{
-					switch ($matches[2][$i])
-					{
-						case "==":
-							$query .= "`".$matches[1][$i].'` = ?';
-							break;
-						case "%=":
-							$query .= "`".$matches[1][$i]."` LIKE ?";
-							$matches[3][$i] = "%".$matches[3][$i]."%";
-							break;
-					}
-					if ($matches[4][$i] == ", ")
-					{
-						$query .= " AND ";
-					}
-				}
-			}
+			if (isset($optionals['limit']))
+            {
+                $query .= " LIMIT ".$optionals['limit'];
+                unset($optionals['limit']);
+            }
 		} else {
 			$query .= "COUNT(*) FROM `$table`";
+            $optionals['cases'] = array();
+            unset($table);
 		}
-		$stmt = $this->mysqli->prepare($query);
-		if (isset($matches))
-		{
-			$params = array();
-			$types = "";
-			foreach ($matches[3] as $key=>$value)
-			{
-				if (is_int($value) == TRUE) $types .= "i";
-				elseif(is_float($value) == TRUE) $types .= "d";
-				else $types .= "s";
-				$params[$key] = &$matches[3][$key];
-			}
-			array_unshift($params, $types);
-			call_user_func_array(array($stmt, "bind_param"), $params);
-		}
-		$stmt->execute();
-		$stmt->bind_result($result);
-		$stmt->fetch();
-		$stmt->close();
-		return $result;
+		$this->query($query, $optionals['cases']);
+        $data = $this->getReturnedData("num");
+        return intval($data[0][0]);
 	}
 
-	public function selectEntry($table, $cases, $rows = null) {
-		$query = "SELECT ";
-		if (isset($rows))
-		{
-			$rows = explode(", ", $rows);
-			foreach ($rows as $value)
-			{
-				if (end($rows) != $value) $query .= "`".$value."`, ";
-				if (end($rows) == $value) $query .= "`".$value."` ";
-			}
-		} else {
-			$query .= "* ";
-		}
-		$query .= "FROM `".$table."` WHERE ";
-		preg_match_all("/`([A-z0-9_-]*)`(==|%=)<([^>]+)>(, )?/s", $cases, $matches);
-		for ($i=0; $i<count($matches[0]); $i++)
-		{
-			switch ($matches[2][$i])
-			{
-				case "==":
-					$query .= "`".$matches[1][$i]."` = ?";
-					break;
-				case "%=":
-					$query .= "`".$matches[1][$i]."` LIKE ?";
-					break;
-			}
-			if ($matches[4][$i] == ", ")
-			{
-				$query .= " AND ";
-			}
-		}
-		$stmt = $this->mysqli->prepare($query);
-		$types = "";
-		$params = array();
-		foreach ($matches[3] as $k=>$v)
-		{
-			if (is_int($v) == TRUE) $types .= "i";
-			elseif(is_float($v) == TRUE) $types .= "d";
-			else $types .= "s";
-			$params[$k] = &$matches[3][$k];
-		}
-		array_unshift($params, $types);
-		call_user_func_array(array($stmt, "bind_param"), $params);
-		$stmt->execute();
-		$meta = $stmt->result_metadata();
-		$result = array();
-		while($field = $meta->fetch_field())
-		{
-			$result[] = &$data[$field->name];
-		}
-		$stmt->store_result();
-		call_user_func_array(array($stmt, "bind_result"), $result);
-		$stmt->fetch();
-		$stmt->close();
-		return $data;
+	public function selectEntry($table, $cases, $rows = NULL) {
+        $opt = array(
+            'cases' => $cases,
+            'limit' => "1"
+        );
+        if ($rows != NULL)
+        {
+            $opt['rows'] = $rows;
+        }
+		$data = $this->selectEntries($table, $opt);
+        return $data[0];
 	}
 	
 	public function insertData($table, $values)
 	{
 		$query = "INSERT INTO `".$table."` ";
-		preg_match_all("/(`([A-Za-z0-9_-]+)`=)?<([^>]+)>(, )?/s", $values, $matches);
-		if ($matches[1][1] != "")
+		if (!isset($values[0]))
 		{
 			$query .= "(";
-			for ($i=0; $i<count($matches[0]); $i++)
+            $qvalues = "VALUES (";
+			foreach ($values as $row => $value)
 			{
-				$query .= "`".$matches[2][$i]."`";
-				if ($matches[4][$i] == ", ")
+				$query .= "`".$row."`";
+                $qvalues .= ":{$row}";
+                end($values);
+				if ($row != key($values))
 				{
 					$query .= ", ";
+                    $qvalues .= ", ";
 				}
 			}
 			$query .= ") ";
-		}
-		$query .= "VALUES (";
-		for ($i=0; $i<count($matches[2]); $i++)
-		{
-			$query .= "?";
-			if ($matches[4][$i] == ", ")
-			{
-				$query .= ", ";
-			}
-		}
-		$query .= ")";
-		$stmt = $this->mysqli->prepare($query);
-		$nvalues = array();
-		$types = "";
-		foreach ($matches[3] as $key=>$value)
-		{
-			if (is_int($value)) $types .= "i";
-			elseif(is_float($value)) $types .= "d";
-			else $types .= "s";
-			$nvalues[$key] = &$matches[3][$key];
-		}
-		array_unshift($nvalues, $types);
-		call_user_func_array(array($stmt, "bind_param"), $nvalues);
-		if ($stmt->execute() != FALSE) return "ok";
-		else return "fail: ".$this->mysqli->error;
+            $qvalues .= ")";
+            $query .= $qvalues;
+            unset($qvalues, $row, $value, $table);
+		} else {
+            $query .= "VALUES (";
+            foreach ($values as $k=>$value)
+            {
+            	$query .= "?";
+                end($values);
+            	if ($k != key($values))
+            	{
+            		$query .= ", ";
+            	}
+            }
+            $query .= ")";
+        }
+		return $this->query($query, $values);
 	}
 
 	public function updateData($table, $values, $cases = null)
 	{
 		$query = "UPDATE ".$table." SET ";
-		preg_match_all("/`([A-z0-9_-]+)`=<([^>]+)>(, )?/s", $values, $valuesar);
-		for ($i=0; $i<count($valuesar[0]); $i++)
-		{
-			$query .= "`".$valuesar[1][$i]."` = ?";
-			if ($valuesar[3][$i] == ", ") $query .= ", ";
-		}
+		foreach ($values as $row => $value)
+        {
+            $query .= "`{$row}` = :{$row}";
+            end($values);
+            if ($row != key($values))
+            {
+                $query .= ", ";
+            }
+            $data = $values;
+            unset($values);
+        }
 		if ($cases != null)
 		{
-			preg_match_all("/`([A-z0-9_-]*)`(==|%=)<([^>]+)>(, )?/s", $cases, $casesar);
 			$query .= " WHERE ";
-			for ($i=0; $i<count($casesar[0]); $i++)
-			{
-				switch ($casesar[2][$i])
-				{
-					case "==":
-						$query .= "`".$casesar[1][$i]."` = ?";
-						break;
-					case "%=":
-						$query .= "`".$casesar[1][$i]."` LIKE ?";
-						$casesar[3][$i] = "%".$casesar[3][$i]."%";
-						break;
-				}
-				if ($casesar[4][$i] == ", ")
-				{
-					$query .= " AND ";
-				}
-			}
+			foreach ($cases as $row => $v)
+            {
+                $query .= "`{$row}` = :{$row}";
+                end($cases);
+                if ($row != key($cases))
+                {
+                    $query .= " AND ";
+                }
+            }
+            unset($v, $row);
+            $data = array_merge($data, $cases);
 		}
-		$stmt = $this->mysqli->prepare($query);
-		$values = array();
-		$types = "";
-		foreach ($valuesar[2] as $key=>$value)
-		{
-			if (is_int($value) == TRUE) $types .= "i";
-			elseif(is_float($value) == TRUE) $types .= "d";
-			else $types .= "s";
-			$values[$key] = &$valuesar[2][$key];
-		}
-		$cases = array();
-		foreach ($casesar[3] as $key=>$value)
-		{
-			if (is_int($value) == TRUE) $types .= "i";
-			elseif(is_float($value) == TRUE) $types .= "d";
-			else $types .= "s";
-			$cases[$key] = &$casesar[3][$key];
-			$values[] = &$cases[$key];
-		}
-		array_unshift($values, $types);
-		call_user_func_array(array($stmt, "bind_param"), $values);
-		if ($stmt->execute() != FALSE) return "ok";
-		else return "error: ".$this->mysqli->error;
+		return $this->query($query, $data);
 	}
 	
-	public function deleteData($table, $cases = null)
+	public function deleteData($table, $cases = array())
 	{
 		$query = "DELETE FROM `".$table."`";
-		if ($cases != null)
+		if ($cases != array())
 		{
 			$query .= " WHERE ";
-			preg_match_all("/`([A-z0-9_-]*)`(==|%=)<([^>]+)>(, )?/s", $cases, $matches);
-			for ($i=0; $i<count($matches[0]); $i++)
-			{
-				switch ($matches[2][$i])
-				{
-					case "==":
-						$query .= "`".$matches[1][$i]."` = ?";
-						break;
-					case "%=":
-						$query .= "`".$matches[1][$i]."` LIKE ?";
-						break;
-				}
-				if ($matches[4][$i] == ", ")
-				{
-					$query .= " AND ";
-				}
-			}
+			foreach ($cases as $row => $v)
+            {
+                $query .= "`{$row}` = :{$row}";
+                end($cases);
+                if ($row != key($cases))
+                {
+                    $query .= " AND ";
+                }
+            }
+            unset($v, $row);
 		}
-		$stmt = $this->mysqli->prepare($query);
-		if (isset($matches))
-		{
-			$cases = array();
-			$types = "";
-			foreach ($matches[3] as $key=>$value)
-			{
-				if (is_int($value) == TRUE) $types .= "i";
-				elseif(is_float($value) == TRUE) $types .= "d";
-				else $types .= "s";
-				$cases[$key] = &$matches[3][$key];
-			}
-			array_unshift($cases, $types);
-			call_user_func_array(array($stmt, "bind_param"), $cases);
-		}
-		if ($stmt->execute() != FALSE) return "ok";
-		else return "error: ".$mysqli->error;
+		return $this->query($query, $cases);
 	}
+        
+        public function query($query, $data = array())
+        {
+            try { // Prepare statement
+                $this->stat = $this->conn->prepare($query);
+                if (!is_array($data))
+                { // If data isn't array, throw exception
+                    throw new inviException(10001, "\$data must be an array!");
+                } // Execute statement with data given
+                $this->stat->execute($data);
+            } catch (PDOException $e) {
+                throw new inviException($e->getCode(), $e->getMessage());
+            }
+            return true;
+        }
+        
+        public function getReturnedData($fetch_mode = "assoc")
+        {
+            try {
+                switch ($fetch_mode)
+                { // Set fetch mode, default is assoc.
+                    case "num":
+                        $this->stat->setFetchMode(PDO::FETCH_NUM);
+                        break;
+                    case "assoc":
+                    default:
+                        $this->stat->setFetchMode(PDO::FETCH_ASSOC);
+                }
+                $data = array();
+                while ($row = $this->stat->fetch())
+                { // Fetch $data array with rows
+                    $data[] = $row;
+                }
+            } catch (PDOException $e) {
+                throw new inviException($e->getCode, $e->getMessage);
+            }
+            return $data;
+        }
 }
 ?>

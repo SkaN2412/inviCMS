@@ -46,11 +46,11 @@ final class inviException extends Exception {
             default:
                 return "Invalid mode argument.";
         }
-	if (!file_exists($logfile))
+        if (!file_exists($logfile) && self::$logging == true)
         {
             touch($logfile);
         }
-	self::$logfile = $logfile;
+        self::$logfile = $logfile;
         if ($pf == "plain" || $pf == "html")
         {
             self::$pf = $pf;
@@ -68,7 +68,7 @@ final class inviException extends Exception {
     
     public function __construct($errno, $error)
     {
-        parent::__construct($error, $errno);
+        parent::__construct($error, intval($errno));
         $this->error = parent::getMessage();
         $this->errno = parent::getCode();
         $this->file = parent::getFile().":".parent::getLine();
