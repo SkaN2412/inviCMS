@@ -2,7 +2,7 @@
 class inviDB {
 	//Metadata
 	public $name = "inviDB";
-	public $version = "4.1alpha";
+	public $version = "4.2beta";
 	
     // Variable for connection
 	private $conn;
@@ -94,7 +94,6 @@ class inviDB {
             }
 		} else {
 			$query .= "* FROM `$table`";
-            $optionals['cases'] = array();
             unset($table);
 		}
 		$this->query($query, $optionals['cases']);
@@ -184,7 +183,12 @@ class inviDB {
             $opt['rows'] = $rows;
         }
 		$data = $this->selectEntries($table, $opt);
-        return $data[0];
+        if ($data !== NULL)
+        {
+            return $data[0];
+        } else {
+            return NULL;
+        }
 	}
 	
 	public function insertData($table, $values)
@@ -228,7 +232,7 @@ class inviDB {
 	public function updateData($table, $values, $cases = null)
 	{
 		$query = "UPDATE ".$table." SET ";
-		foreach ($values as $row => $value)
+		foreach ($values as $row => $v)
         {
             $query .= "`{$row}` = :{$row}";
             end($values);
@@ -282,9 +286,10 @@ class inviDB {
             try { // Prepare statement
                 $this->stat = $this->conn->prepare($query);
                 if (!is_array($data))
-                { // If data isn't array, throw exception
-                    throw new inviException(10001, "\$data must be an array!");
-                } // Execute statement with data given
+                { // If data isn't array, make it an empty array
+                    $data = array();
+                }
+                // Execute statement with data given
                 $this->stat->execute($data);
             } catch (PDOException $e) {
                 throw new inviException($e->getCode(), $e->getMessage());
@@ -303,6 +308,10 @@ class inviDB {
                     case "assoc":
                     default:
                         $this->stat->setFetchMode(PDO::FETCH_ASSOC);
+                }
+                if ($this->stat->rowCount() == 0)
+                {
+                    return NULL;
                 }
                 $data = array();
                 while ($row = $this->stat->fetch())
