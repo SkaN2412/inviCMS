@@ -37,14 +37,14 @@ if (WD != ".".DS)
 			require_once(".".DS."modules".DS.$match[1].".module.php");
 		}
 	}
-	$includes = scandir(".".DS."includes");
+	$includes = scandir(".".DS."init");
 	for ($i=0; $i<count($includes); $i++)
 	{
 		if ($includes[$i] == "." || $includes[$i] == "..") continue;
 		preg_match("|([^А-Яа-я]+).php|", $includes[$i], $match);
 		if ($match != array())
 		{
-			include_once(".".DS."includes".DS.$match[1].".php");
+			include_once(".".DS."init".DS.$match[1].".php");
 		}
 	}
 }
@@ -59,14 +59,14 @@ for ($i=0; $i<count($modules); $i++)
 		require_once(WD."modules".DS.$match[1].".module.php");
 	}
 }
-$includes = scandir(WD."includes");
+$includes = scandir(WD."init");
 for ($i=0; $i<count($includes); $i++)
 {
 	if ($includes[$i] == "." || $includes[$i] == "..") continue;
 	preg_match("|([^А-Яа-я]+).php|", $includes[$i], $match);
 	if ($match != array())
 	{
-		include_once(WD."includes".DS.$match[1].".php");
+		include_once(WD."init".DS.$match[1].".php");
 	}
 }
 unset($includes, $modules, $i, $match);

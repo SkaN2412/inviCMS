@@ -1,5 +1,5 @@
 <?php
-class inviDB {
+class inviDBDriver {
 	//Metadata
 	public $name = "inviDB";
 	public $version = "4.2beta";
