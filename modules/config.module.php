@@ -2,7 +2,6 @@
 define("DS", DIRECTORY_SEPARATOR);
 include_once("./exceptions.module.php");
 /*
- * inviConfig 1.0dev
  * Config tool for inviCMS
  * This module is in development now, please, don't use it.
  */
@@ -32,25 +31,22 @@ class inviConfig {
         return $value;
     }
     
-    public function set($what)
-    {
-        $tree = explode("->", $what);
-        if (!isset(Config::${$tree[0]}))
-        {
-            throw new inviException(10001, "Config value $${tree[0]} does not exist.");
-        }
-        $value = Config::${$tree[0]};
-        for ($i=1; $i<count($tree); $i++)
-        {
-            if (!isset($value[$tree[$i]]))
-            {
-                throw new inviException(10001, "Config value $${tree[$i]} does not exist.");
-            }
-            $value = $value[$tree[$i]];
-        }
-    }
+//    public function set($what)
+//    {
+//        $tree = explode("->", $what);
+//        if (!isset(Config::${$tree[0]}))
+//        {
+//            throw new inviException(10001, "Config value $${tree[0]} does not exist.");
+//        }
+//        $value = Config::${$tree[0]};
+//        for ($i=1; $i<count($tree); $i++)
+//        {
+//            if (!isset($value[$tree[$i]]))
+//            {
+//                throw new inviException(10001, "Config value $${tree[$i]} does not exist.");
+//            }
+//            $value = $value[$tree[$i]];
+//        }
+//    }
 }
-?>
-<?php
-//var_dump(inviConfig::get("plugins->blog->integrated"));
 ?>
