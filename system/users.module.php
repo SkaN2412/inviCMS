@@ -9,7 +9,7 @@ class inviUsers
 {
     //Metadata
     const NAME = "inviUsers";
-    const VER = "0.2beta";
+    const VER = "0.2.1beta";
     
     protected $_mysqli;
     protected $login = NULL;
@@ -42,10 +42,10 @@ class inviUsers
         $this->_mysqli = new inviMysql("localhost", "root", "q24u12e19rt94i", "test");
         if ($login != null && $pass != null)
         {
-            $passhash = md5(md5($login).md5($pass)."ilybgsd7fvbv876");
-            $rows = "passhash, group";
+            $password = md5(md5($login).md5($pass)."ilybgsd7fvbv876");
+            $rows = "password, group";
             $sravn = array(
-                "passhash" => NULL,
+                "password" => NULL,
                 "group" => NULL,
             );
             if (self::$ext_rows != array())
@@ -56,10 +56,10 @@ class inviUsers
                     $sravn[$row] = NULL;
                 }
             }
-            $data = $this->_mysqli->selectEntry("users", "`login`==<".$login.">", $rows);
+            $data = $this->_mysqli->selectEntry("users", array( 'login' => $login ), $rows);
             if ($data != $sravn)
             {
-                if ($data['passhash'] != $passhash)
+                if ($data['password'] != $password)
                 {
                     throw new inviException(101, "Wrong password!");
                 }
@@ -128,16 +128,16 @@ class inviUsers
     
     public function register($login, $pass, $group, $ext_data)
     {
-        $check = $this->_mysqli->selectEntry("users", "`login`==<".$login.">", "login");
+        $check = $this->_mysqli->selectEntry("users", array( 'login' => $login ), "login");
         if ($check == array('login'=>null))
         {
-            $passhash = md5(md5($login).md5($pass)."ilybgsd7fvbv876");
-            $toinsert = "`login`=<".$login.">, `passhash`=<".$passhash.">, `group`=<".$group.">";
+            $password = md5(md5($login).md5($pass)."ilybgsd7fvbv876");
+            $toinsert = array( 'login' => $login, 'password' => $password, 'group' => $group );
             foreach ($ext_data as $key => $value)
             {
                 if (in_array($key, self::$ext_rows))
                 {
-                    $toinsert .= ", `".$key."`=<".$value.">";
+                    $toinsert[$key] .= $value;
                 }
             }
             $result = $this->_mysqli->insertData("users", $toinsert);

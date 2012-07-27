@@ -2,7 +2,7 @@
 class inviDBDriver {
 	//Metadata
 	public $name = "inviDBDriver";
-	public $version = "4.2beta";
+	public $version = "4.3beta";
 	
     // Variable for connection
 	private $conn;
@@ -61,16 +61,18 @@ class inviDBDriver {
 			if (isset($optionals['cases']))
 			{ // Cases
 				$query .= " WHERE ";
+                $data = array();
 				foreach ($optionals['cases'] as $row => $v)
                 {
-                    $query .= "`{$row}` = :{$row}";
+                    $query .= "`{$row}` = ?";
+                    $data[] = $v;
                     end($optionals['cases']);
                     if ($row != key($optionals['cases']))
                     {
                         $query .= " AND ";
                     }
                 }
-                unset($v, $row);
+                unset($v, $row, $optionals['cases']);
             }
 			if (isset($optionals['order']))
 			{
@@ -96,7 +98,7 @@ class inviDBDriver {
 			$query .= "* FROM `$table`";
             unset($table);
 		}
-		$this->query($query, $optionals['cases']);
+		$this->query($query, $data);
         return $this->getReturnedData();
 	}
 
@@ -132,16 +134,18 @@ class inviDBDriver {
 			if (isset($optionals['cases']))
 			{
 				$query .= " WHERE ";
+                $data = array();
 				foreach ($optionals['cases'] as $row => $v)
                 {
-                    $query .= "`{$row}` = :{$row}";
+                    $query .= "`{$row}` = ?";
+                    $data[] = $v;
                     end($optionals['cases']);
                     if ($row != key($optionals['cases']))
                     {
                         $query .= " AND ";
                     }
                 }
-                unset($v, $row);
+                unset($v, $row, $optionals['cases']);
             }
 			if (isset($optionals['order']))
 			{
@@ -168,7 +172,7 @@ class inviDBDriver {
             $optionals['cases'] = array();
             unset($table);
 		}
-		$this->query($query, $optionals['cases']);
+		$this->query($query, $data);
         $data = $this->getReturnedData("num");
         return intval($data[0][0]);
 	}
@@ -197,50 +201,49 @@ class inviDBDriver {
 		if (!isset($values[0]))
 		{
 			$query .= "(";
-            $qvalues = "VALUES (";
-			foreach ($values as $row => $value)
+			foreach ($values as $row => $v)
 			{
 				$query .= "`".$row."`";
-                $qvalues .= ":{$row}";
                 end($values);
 				if ($row != key($values))
 				{
 					$query .= ", ";
-                    $qvalues .= ", ";
 				}
 			}
 			$query .= ") ";
-            $qvalues .= ")";
-            $query .= $qvalues;
-            unset($qvalues, $row, $value, $table);
-		} else {
-            $query .= "VALUES (";
-            foreach ($values as $k=>$value)
+            unset($row, $v, $table);
+		}
+        $query .= "VALUES (";
+        $nvalues = array();
+        foreach ($values as $k=>$value)
+        {
+            $nvalues[] = $value;
+            $query .= "?";
+            end($values);
+            if ($k != key($values))
             {
-            	$query .= "?";
-                end($values);
-            	if ($k != key($values))
-            	{
-            		$query .= ", ";
-            	}
+                $query .= ", ";
             }
-            $query .= ")";
         }
-		return $this->query($query, $values);
+        $values = $nvalues;
+        unset($nvalues);
+        $query .= ")";
+        return $this->query($query, $values);
 	}
 
 	public function updateData($table, $values, $cases = null)
 	{
 		$query = "UPDATE ".$table." SET ";
+        $data = array();
 		foreach ($values as $row => $v)
         {
-            $query .= "`{$row}` = :{$row}";
+            $data[] = $v;
+            $query .= "`{$row}` = ?";
             end($values);
             if ($row != key($values))
             {
                 $query .= ", ";
             }
-            $data = $values;
             unset($values);
         }
 		if ($cases != null)
@@ -248,7 +251,8 @@ class inviDBDriver {
 			$query .= " WHERE ";
 			foreach ($cases as $row => $v)
             {
-                $query .= "`{$row}` = :{$row}";
+                $data[] = $v;
+                $query .= "`{$row}` = ?";
                 end($cases);
                 if ($row != key($cases))
                 {
@@ -256,7 +260,6 @@ class inviDBDriver {
                 }
             }
             unset($v, $row);
-            $data = array_merge($data, $cases);
 		}
 		return $this->query($query, $data);
 	}
@@ -267,9 +270,11 @@ class inviDBDriver {
 		if ($cases != array())
 		{
 			$query .= " WHERE ";
+            $data = array();
 			foreach ($cases as $row => $v)
             {
-                $query .= "`{$row}` = :{$row}";
+                $data[] = $v;
+                $query .= "`{$row}` = ?";
                 end($cases);
                 if ($row != key($cases))
                 {
